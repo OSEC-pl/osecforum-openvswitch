@@ -1,0 +1,16 @@
+
+module ovs-f26-fix 1.0;
+
+require {
+	type openvswitch_t;
+	type init_t;
+	type openvswitch_var_run_t;
+	class sock_file write;
+	class system module_load;
+}
+
+#============= init_t ==============
+allow init_t openvswitch_var_run_t:sock_file write;
+
+#============= openvswitch_t ==============
+allow openvswitch_t self:system module_load;
