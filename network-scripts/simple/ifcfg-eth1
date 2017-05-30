@@ -1,0 +1,7 @@
+DEVICE=eth1
+BOOTPROTO=none
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSPort
+OVS_BRIDGE=ovsbr0
+
