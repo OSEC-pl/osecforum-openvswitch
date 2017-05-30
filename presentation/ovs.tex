@@ -89,25 +89,115 @@
 \frametitle{Open vSwitch}
 \begin{itemize}
 	\item Wirtualny switch / bridge.
+	\item OpenFlow.
 	\item Używany domyślnie do zarządzania warstwą 2 w Red Hat OpenStack.
 	\item VLAN/VXLAN/GRE.
 \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{Instalacja}
+\frametitle{Przygotowania do instalacji}
 \begin{itemize}
-	\item Paczka {\tt openvswitch} dostarcza potrzebne narzędzia.
-	\item To wszystko! \Smiley
+	\item Open vSwitch dostępny w większości dystrybucji Linuxa.
+	\item W Fedorze paczka {\tt openvswitch}.
+	\item Wymagania dotyczące konfiguracji.
+	\begin{itemize}
+		\item NetworkManager konfliktuje z Open vSwitch.
+		\item {\tt systemctl stop NetworkManager}
+		\item {\tt systemctl disable NetworkManager}
+		\item W naszym obrazie VM jest już wyłączony.
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Nasze środowisko demonstracyjne}
+\begin{itemize}
+	\item insert rysunek here 
+% eth0 będzie naszym interfejsem do zarządzania maszynami, skonfigurowany poza openvswitch
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Środowisko demonstracyjne -- import maszyn}
+\begin{itemize}
+	\item Obraz maszyn wirtualnych w formacie OVF 2.0.
+	\item Reinitialize the MAC address of all network cards 
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Środowisko demonstracyjne -- konfiguracja}
+\begin{itemize}
+	\item Fedora 26 Alpha.
+	\item Open vSwitch 2.7.0.
+	\item root/fedora
+	\item Materiały do labu:
+	\item {\tt cd \&\& git clone \href{https://github.com/OSEC-pl/osecforum-openvswitch.git}{https://github.com/OSEC-pl/osecforum-openvswitch.git} lab}
+	\item Nadanie nazwy hosta:
+	\item {\tt hostnamectl set-hostname ovshostX.osecforum.pl}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Środowisko demonstracyjne -- konfiguracja}
+\begin{itemize}
+	\item ovshostX: Network settings->Adapter 1->Port Forwarding.
+	\item Host IP: 127.0.0.1
+	\item Host port: 1000X
+	\item Guest IP: 10.0.2.15
+	\item Guest port: 22
+	\item Można zalogować się po SSH z systemu operacyjnego hypervisora:
+	\item {\tt ssh -p 1000X root@127.0.0.1}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Usługa Open vSwitch}
+\begin{itemize}
+	\item Paczka: {\tt openvswitch}.
+	\item Jednostka systemd: {\tt openvswitch.service} (podnosi też {\tt ovs-vswitchd.service} i {\tt ovsdb-server.service}).
+	\item Moduł kernela: {\tt openvswitch}.
+	\item {\tt systemctl start openvswitch}
+	\item {\tt systemctl enable openvswitch}
+
 \end{itemize}
 \end{frame}
 
 \begin{frame}
 \frametitle{SELinux}
 \begin{itemize}
-	\item Typ {\tt container\_t} dla procesów oraz {\tt continer\_file\_t} i {\tt container\_ro\_file\_t}.
-	\item Import kontenera z sieci: {\tt machinectl pull-raw \href{https://dl.fedoraproject.org/pub/fedora/linux/releases/25/CloudImages/x86\_64/images/Fedora-Cloud-Base-25-1.3.x86\_64.raw.xz}{Fedora-Cloud-Base-25-1.3.x86\_64}}.
+	\item Fedora 26 Alpha wymaga małych poprawek do polityki bezpieczeństwa SELinuxa.
+	\item {\tt semodule -i \$HOME/lab/selinux/ovs-f26-fix.pp}
 \end{itemize}	
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Podstawowa konfiguracja bridge'a}
+\begin{itemize}
+% disable dhcp for eth1
+	\item {\tt ovs-vsctl add-br ovsbr0}
+	\item {\tt ovs-vsctl add-port ovsbr0 eth1}
+	\item {\tt ovs-vsctl show}
+\end{itemize}
+	\scriptsize
+\begin{verbatim}
+Bridge "ovsbr0"
+  Port "eth1"
+    Interface "eth1"
+  Port "ovsbr0"
+    Interface "ovsbr0"
+    type: internal
+ovs_version: "2.7.0"
+\end{verbatim}
+\end{frame}
+	
+\begin{frame}
+\frametitle{Stała konfiguracja}
+\begin{itemize}
+	\item Gdy nie mamy kontrolera SDN, możemy skonfigurować Open vSwitcha przy starcie za pomocą skryptów w katalogu {\tt /etc/sysconfig/network-scripts/}.
+	\item OpenStack składa w ten sposób tylko interfejs {\tt br-ex}. 
+\end{itemize}
 \end{frame}
 
 \begin{frame}
