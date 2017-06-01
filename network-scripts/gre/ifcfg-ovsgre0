@@ -1,0 +1,7 @@
+DEVICE=ovsgre0
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSTunnel
+OVS_BRIDGE=ovsbr0
+OVS_TUNNEL_TYPE=gre
+OVS_TUNNEL_OPTIONS="options:remote_ip=X.X.X.X"

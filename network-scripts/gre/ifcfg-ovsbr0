@@ -1,0 +1,9 @@
+DEVICE=ovsbr0
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSBridge
+BOOTPROTO=static
+# change me:
+IPADDR=172.254.1.X
+PREFIX=24
+

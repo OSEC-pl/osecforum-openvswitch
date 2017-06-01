@@ -89,9 +89,9 @@
 \frametitle{Open vSwitch}
 \begin{itemize}
 	\item Wirtualny switch / bridge.
-	\item OpenFlow.
-	\item Używany domyślnie do zarządzania warstwą 2 w Red Hat OpenStack.
-	\item VLAN/VXLAN/GRE.
+	\item Do zarządzania wykorzystywany jest protokół OpenFlow.
+	\item Używany domyślnie do zarządzania warstwą 2 sieci w Red Hat OpenStack.
+	\item Do separacji warsty drugiej można wykorzystać szereg mechanizmów (VLAN/VXLAN/GRE...).
 \end{itemize}
 \end{frame}
 
@@ -196,7 +196,78 @@ ovs_version: "2.7.0"
 \frametitle{Stała konfiguracja}
 \begin{itemize}
 	\item Gdy nie mamy kontrolera SDN, możemy skonfigurować Open vSwitcha przy starcie za pomocą skryptów w katalogu {\tt /etc/sysconfig/network-scripts/}.
-	\item OpenStack składa w ten sposób tylko interfejs {\tt br-ex}. 
+	\item OpenStack składa w ten sposób tylko bridge {\tt br-ex}, reszta jest konfigurowana agentem Neutrona. 
+	\item Nie wszystkie możliwe rodzaje konfiguracji są wspierane.
+	\item Należy pamiętać o odpowiedniej konfiguracji firewalla.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Stała konfiguracja c.d.}
+\begin{itemize}
+	\item Przykład: fizyczny interfejs do Open vSwitcha.
+\end{itemize}
+\begin{columns}
+	\begin{column}{0.5\textwidth}
+		\begin{verbatim}
+# ifcfg-ovsbr0
+DEVICE=ovsbr0
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSBridge
+BOOTPROTO=static
+IPADDR=X.X.X.X
+PREFIX=XX
+		\end{verbatim}
+	\end{column}
+	\begin{column}{0.5\textwidth}
+		\begin{verbatim}
+		# ifcfg-eth1
+		DEVICE=eth1
+		ONBOOT=yes
+		DEVICETYPE=ovs
+		TYPE=OVSPort
+		BOOTPROTO=none
+		OVS_BRIDGE=ovsbr0
+		\end{verbatim}
+	\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Stała konfiguracja c.d.}
+\begin{itemize}
+	\item Przykład: enkapsulacja sieci L2 w protokół GRE.
+\end{itemize}
+\begin{columns}
+	\begin{column}{0.5\textwidth}
+		\begin{verbatim}
+	# ifcfg-ovsbr0
+	DEVICE=ovsbr0
+	ONBOOT=yes
+	DEVICETYPE=ovs
+	TYPE=OVSBridge
+	BOOTPROTO=static
+	IPADDR=X.X.X.X
+	PREFIX=XX
+		\end{verbatim}
+	\end{column}
+	\begin{column}{0.5\textwidth}
+		\begin{verbatim}
+	# ifcfg-ovsgre0
+	DEVICE=ovsgre0
+	ONBOOT=yes
+	DEVICETYPE=ovs
+	TYPE=OVSTunnel
+	OVS_BRIDGE=ovsbr0
+	OVS_TUNNEL_TYPE=gre
+	OVS_TUNNEL_OPTIONS=
+	"options:remote_ip=Y.Y.Y.Y"
+		\end{verbatim}
+	\end{column}
+\end{columns}
+\begin{itemize}
+	\item Ponadto standardowe interfejsy ethernetowe w sieci, po której przesyłany jest tunel.
 \end{itemize}
 \end{frame}
 
