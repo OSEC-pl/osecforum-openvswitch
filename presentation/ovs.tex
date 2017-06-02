@@ -119,7 +119,6 @@
 % eth0 będzie naszym interfejsem do zarządzania maszynami, skonfigurowany poza openvswitch
 %\end{itemize}
 \includegraphics[width=1.00\textwidth]{img-labenv.pdf}
-
 \end{frame}
 
 \begin{frame}
@@ -266,9 +265,60 @@ ovs_version: "2.7.0"
 	\item Protokół VXLAN jest bardziej efektywnym rozwiązaniem gdy mamy wiele hostów -- tunelowanie ramek L2 w UDP.
 	\item VXLAN wspiera też multicasting... choć sam Open vSwitch jeszcze nie. Implementacja w kernelu Linuxa ma już obsługę multicastingu.
 	\item Konfiguracja tunelu VXLAN w Open vSwitch:
-	\item {\tt ovs-vsctl add-port ovsbr0 ovsxv0 -- set interface ovsvx0 type=vxlan options:remote\_ip=192.168.1.Y}
+	\item {\tt ovs-vsctl add-port ovsbr0 ovsvx0 -- set interface ovsvx0 type=vxlan options:remote\_ip=192.168.1.Y}
 \end{itemize}
+\end{frame}
 
+\begin{frame}
+\frametitle{Network namespaces}
+\begin{itemize}
+	\item Pozwala na uruchomienie więcej niż jednej ,,instancji'' stosu sieciowego w kernelu Linuxa. 
+	\item Każdy namespace ma własne, odrębne interfejsy, własną konfigurację adresacji i tablicę routingu.
+	\item Pozwalają na zwirtualizowanie funkcji sieciowych wymagających dostępu do warstwy 2.
+	\item Dodanie namespace:
+	\item {\tt ip netns add foo}
+	\item {\tt ip netns list}
+	\item Wykonanie polecenia wewnątrzn namespace:
+	\item {\tt ip netns exec foo polecenie}
+	\item {\tt ip netns exec foo ip link set dev lo up}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Interfejsy {\tt veth}}
+\begin{itemize}
+	\item Wirtualny Ethernet -- posiada dwie ,,końcówki''. 
+	\item Może posłużyć do połączenia namespace z Open vSwitch.
+	\item Utworzenie interfejsów {\tt veth}:
+	\item {\tt ip link add veth0 type veth peer name veth1}
+	\item {\tt ip link set veth1 netns foo}
+	\item {\tt ip netns exec foo ip link set dev veth1 up }
+	\item {\tt ip netns exec foo ip addr add 172.24.252.X/24 dev veth1} 
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Dodanie {\tt veth} do Open vSwitch jako portu}
+\begin{itemize}
+	\item {\tt ip link set dev veth0 up}
+	\item {\tt ovs-vsctl add-port ovsbr0 veth0}
+\end{itemize}
+\scriptsize
+\begin{verbatim}
+Bridge "ovsbr0"
+  Port "ovsvx0"
+    Interface "ovsvx0"
+      type: vxlan
+      options: {remote_ip="192.168.1.2"}
+    Port "veth0"
+      tag: 2
+      Interface "veth0"
+\end{verbatim}
+\normalsize
+\begin{itemize}
+	\item {\tt ip netns exec foo ping 172.24.252.Y}
+	\item {\tt ip netns exec foo ping6 fe80::...\%veth1}
+\end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -351,7 +401,7 @@ ovs_version: "2.7.0"
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}
 \frametitle{Stała konfiguracja c.d.}
 \begin{itemize}
 	\item Wirtualizacja -- interfejsy tap maszyn wirtualnych ({\tt vnetX} w {\tt libvirtd}). Tak samo jak każdy inny interfejs tam w Open vSwitch.
@@ -359,6 +409,15 @@ ovs_version: "2.7.0"
 	\item Co z {\tt veth}? \href{https://github.com/LanetNetwork/initscripts-veth}{https://github.com/LanetNetwork/initscripts-veth} (dla Linux Bridge, potrzebne poprawki dla Open vSwitch).
 	\item Pole dla własnej inwencji twórczej...
 	\item W środowisku korporacyjnym lepiej użyć kontrolera SDN -- niech on konfiguruje Open vSwitcha.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Podsumowując...}
+\begin{itemize}
+	\item Open vSwitch w połączeniu z namespace oraz interfejsami {\tt veth} daje nam niespotykane wcześniej możliwości wirtualizacji sieci oraz funkcji sieciowych.
+	\item Pozwala na łatwe wdrożenie aplikacji wymagających bezpośrednio dostępu do warstwy drugiej sieci.
+	\item Rozwiązanie to chętnie jest wykorzystywane przy tworzeniu chmur prywatnych (np. wirtualne routery, usługi sieciowe w OpenStack).
 \end{itemize}
 \end{frame}
 
