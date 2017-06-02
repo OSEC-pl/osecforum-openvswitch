@@ -75,6 +75,8 @@
 \setlength{\tabcolsep}{8pt}
 \renewcommand{\arraystretch}{1.2}
 
+\newcommand{\tri}{$\triangleright$ }
+
 \title{Open vSwitch -- lab}
 \author{Radosław Kujawa -- radoslaw.kujawa@osec.pl}
 \institute{OSEC}
@@ -88,10 +90,10 @@
 \begin{frame}
 \frametitle{Open vSwitch}
 \begin{itemize}
-	\item Wirtualny switch / bridge.
+	\item Elastyczny, zarządzalny wirtualny switch do zastosowań Software Defined Network.
 	\item Do zarządzania wykorzystywany jest protokół OpenFlow.
-	\item Używany domyślnie do zarządzania warstwą 2 sieci w Red Hat OpenStack.
-	\item Do separacji warsty drugiej można wykorzystać szereg mechanizmów (VLAN/VXLAN/GRE...).
+	\item Używany domyślnie do wirtualizacji warstwy 2 sieci w Red Hat OpenStack.
+	\item Do separacji warstwy drugiej można wykorzystać szereg mechanizmów (VLAN/VXLAN/GRE...).
 \end{itemize}
 \end{frame}
 
@@ -112,44 +114,65 @@
 
 \begin{frame}
 \frametitle{Nasze środowisko demonstracyjne}
-\begin{itemize}
-	\item insert rysunek here 
+%\begin{itemize}
+%	\item insert rysunek here 
 % eth0 będzie naszym interfejsem do zarządzania maszynami, skonfigurowany poza openvswitch
-\end{itemize}
+%\end{itemize}
+\includegraphics[width=1.00\textwidth]{img-labenv.pdf}
+
 \end{frame}
 
 \begin{frame}
 \frametitle{Środowisko demonstracyjne -- import maszyn}
 \begin{itemize}
 	\item Obraz maszyn wirtualnych w formacie OVF 2.0.
-	\item Reinitialize the MAC address of all network cards 
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Środowisko demonstracyjne -- konfiguracja}
-\begin{itemize}
-	\item Fedora 26 Alpha.
-	\item Open vSwitch 2.7.0.
-	\item root/fedora
-	\item Materiały do labu:
-	\item {\tt cd \&\& git clone \href{https://github.com/OSEC-pl/osecforum-openvswitch.git}{https://github.com/OSEC-pl/osecforum-openvswitch.git} lab}
+	\item Reinitialize the MAC address of all network cards.
+	\item Fedora 26 Alpha + Open vSwitch 2.7.0.
+	\item Logowanie: {\tt root/fedora}
 	\item Nadanie nazwy hosta:
 	\item {\tt hostnamectl set-hostname ovshostX.osecforum.pl}
+	\item Materiały do labu:
+	\item {\tt cd \&\& git clone \href{https://github.com/OSEC-pl/osecforum-openvswitch.git}{https://github.com/OSEC-pl/osecforum-openvswitch.git} lab}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Środowisko demonstracyjne -- firewall}
+\begin{itemize}
+	\item W rzeczywistych warunkach konieczna jest także konfiguracja firewalla (ale tu nie będziemy tego robić).
+	\item {\tt systemctl stop firewalld}
+	\item {\tt systemctl disable firewalld}
+	\item {\tt systemctl mask firewalld}
 \end{itemize}
 \end{frame}
 
 \begin{frame}
 \frametitle{Środowisko demonstracyjne -- konfiguracja}
 \begin{itemize}
-	\item ovshostX: Network settings->Adapter 1->Port Forwarding.
-	\item Host IP: 127.0.0.1
-	\item Host port: 1000X
-	\item Guest IP: 10.0.2.15
-	\item Guest port: 22
-	\item Można zalogować się po SSH z systemu operacyjnego hypervisora:
-	\item {\tt ssh -p 1000X root@127.0.0.1}
+	\item Przkierowanie połączenia SSH do maszyn wirtualnych:
+	\begin{itemize}
+		\item ovshostX: Network settings \tri Adapter 1 \tri Port Forwarding.
+		\item Host IP: 127.0.0.1
+		\item Host port: 1000X
+		\item Guest IP: 10.0.2.15
+		\item Guest port: 22
+		\item Można zalogować się po SSH z systemu operacyjnego hypervisora:
+		\item {\tt ssh -p 1000X root@127.0.0.1}
+	\end{itemize}
+	\item Zezwolenie na przechywywanie ruchu w sieci wewnętrznej:
+	\begin{itemize}
+		\item ovshostX: Network settings \tri Adapter 2 \tri Promiscuous Mode.
+		\item Allow all. 
+	\end{itemize}
 \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{SELinux}
+\begin{itemize}
+	\item Fedora 26 Alpha wymaga małych poprawek do polityki bezpieczeństwa SELinuxa.
+	\item {\tt semodule -i \$HOME/lab/selinux/ovs-f26-fix.pp}
+\end{itemize}	
 \end{frame}
 
 \begin{frame}
@@ -164,14 +187,6 @@
 \end{itemize}
 \end{frame}
 
-\begin{frame}
-\frametitle{SELinux}
-\begin{itemize}
-	\item Fedora 26 Alpha wymaga małych poprawek do polityki bezpieczeństwa SELinuxa.
-	\item {\tt semodule -i \$HOME/lab/selinux/ovs-f26-fix.pp}
-\end{itemize}	
-\end{frame}
-
 \begin{frame}[fragile]
 \frametitle{Podstawowa konfiguracja bridge'a}
 \begin{itemize}
@@ -179,8 +194,10 @@
 	\item {\tt ovs-vsctl add-br ovsbr0}
 	\item {\tt ovs-vsctl add-port ovsbr0 eth1}
 	\item {\tt ovs-vsctl show}
+	\item {\tt ip addr add 172.24.254.X/24 dev ovsbr0}
+	\item {\tt ip link set dev ovsbr0 up}
 \end{itemize}
-	\scriptsize
+\scriptsize
 \begin{verbatim}
 Bridge "ovsbr0"
   Port "eth1"
@@ -191,10 +208,73 @@ Bridge "ovsbr0"
 ovs_version: "2.7.0"
 \end{verbatim}
 \end{frame}
-	
+
+\begin{frame}
+\frametitle{Użycie VLAN do separacji sieci warstwy 2}
+\begin{itemize}
+	\item Wszystkie porty w Open vSwitch domyślnie są trunkami VLAN.
+	\item Sytuacja z poprzedniego slajdu -- ruch ,,nieotagowany'' (bez VLAN).
+	\item Dodanie interfejsu w konkretnym VLAN:
+	\begin{itemize}
+		\item {\tt ovs-vsctl add-port ovsbr0 vlan1 -- set interface vlan1 type=internal}
+		\item {\tt ovs-vsctl set port vlan1 tag=1}
+		\item {\tt ip addr add 172.24.253.X/24 dev vlan1}
+		\item {\tt ip link set dev vlan1 up}
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Użycie VLAN do separacji sieci warstwy 2 -- c.d.}
+\begin{itemize}
+	\item Port {\tt vlan1} jest widoczny na poziomie hosta jako osobny interfejs. 
+	\item Ruch wysłany/odbierany na tym interfejsie jest automatycznie tagowany jako VLAN z ID 1.
+\end{itemize}
+\scriptsize
+\begin{verbatim}
+Bridge "ovsbr0"
+  Port "vlan1"
+    tag: 1 
+    Interface "vlan1"
+      type: internal
+  Port "eth1"
+    Interface "eth1"
+  Port "ovsbr0"
+    Interface "ovsbr0"
+      type: internal
+ovs_version: "2.7.0"
+\end{verbatim}	
+\end{frame}
+
+\begin{frame}
+\frametitle{Tunelowanie ruchu w sieci fizycznej}
+\begin{itemize}
+	\item Użycie VLAN do separacji na poziomie sieci fizycznej nie zawsze jest możliwe.
+	\item Open vSwitch pozwala tunelować ruch między bridge'ami na odległych maszynach.
+	\item Konfigurujemy adresację IP eth1 na poziomie systemu operacyjnego.
+	\item {\tt ovs-vsctl del-port ovsbr0 eth1}
+	\item {\tt ip addr add 192.168.1.X/24 dev eth1}
+	\item Stworzenie tunelu GRE:
+	\item {\tt ovs-vsctl add-port ovsbr0 ovsgre0 -- set interface ovsgre0 type=gre options:remote\_ip=192.168.1.Y}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Tunelowanie ruchu z użyciem VXLAN}
+\begin{itemize}
+	\item Protokół GRE, jako odrębny protokół IP nie zawsze jest preferowanym rozwiązaniem.
+	\item Protokół VXLAN jest bardziej efektywnym rozwiązaniem gdy mamy wiele hostów -- tunelowanie ramek L2 w UDP.
+	\item VXLAN wspiera też multicasting... choć sam Open vSwitch jeszcze nie. Implementacja w kernelu Linuxa ma już obsługę multicastingu.
+	\item Konfiguracja tunelu VXLAN w Open vSwitch:
+	\item {\tt ovs-vsctl add-port ovsbr0 ovsxv0 -- set interface ovsvx0 type=vxlan options:remote\_ip=192.168.1.Y}
+\end{itemize}
+
+\end{frame}
+
 \begin{frame}
 \frametitle{Stała konfiguracja}
 \begin{itemize}
+	\item Konfiguracja bridge'y i wewnętrznych portów z założenia jest stała, konfiguracja adresacji IP {\em nie jest}.
 	\item Gdy nie mamy kontrolera SDN, możemy skonfigurować Open vSwitcha przy starcie za pomocą skryptów w katalogu {\tt /etc/sysconfig/network-scripts/}.
 	\item OpenStack składa w ten sposób tylko bridge {\tt br-ex}, reszta jest konfigurowana agentem Neutrona. 
 	\item Nie wszystkie możliwe rodzaje konfiguracji są wspierane.
@@ -210,14 +290,14 @@ ovs_version: "2.7.0"
 \begin{columns}
 	\begin{column}{0.5\textwidth}
 		\begin{verbatim}
-# ifcfg-ovsbr0
-DEVICE=ovsbr0
-ONBOOT=yes
-DEVICETYPE=ovs
-TYPE=OVSBridge
-BOOTPROTO=static
-IPADDR=X.X.X.X
-PREFIX=XX
+		# ifcfg-ovsbr0
+		DEVICE=ovsbr0
+		ONBOOT=yes
+		DEVICETYPE=ovs
+		TYPE=OVSBridge
+		BOOTPROTO=static
+		IPADDR=X.X.X.X
+		PREFIX=XX
 		\end{verbatim}
 	\end{column}
 	\begin{column}{0.5\textwidth}
@@ -268,6 +348,17 @@ PREFIX=XX
 \end{columns}
 \begin{itemize}
 	\item Ponadto standardowe interfejsy ethernetowe w sieci, po której przesyłany jest tunel.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Stała konfiguracja c.d.}
+\begin{itemize}
+	\item Wirtualizacja -- interfejsy tap maszyn wirtualnych ({\tt vnetX} w {\tt libvirtd}). Tak samo jak każdy inny interfejs tam w Open vSwitch.
+	\item Network namespace -- brak standardu dla statycznej konfiguracji. 
+	\item Co z {\tt veth}? \href{https://github.com/LanetNetwork/initscripts-veth}{https://github.com/LanetNetwork/initscripts-veth} (dla Linux Bridge, potrzebne poprawki dla Open vSwitch).
+	\item Pole dla własnej inwencji twórczej...
+	\item W środowisku korporacyjnym lepiej użyć kontrolera SDN -- niech on konfiguruje Open vSwitcha.
 \end{itemize}
 \end{frame}
 
